@@ -37,7 +37,8 @@
 #define HA_0_UID "0"
 #define HA_0_DEV "power"
 #define HA_0_UNIT "W"
-#define HA_0_NAME "Overall Power Consumption"
+#define HA_0_NAME "Live Power Consumption"
+#define HA_0_STATS "measurement"
 
 // Arduino pins
 #define RFM01S_DATA D12
@@ -158,7 +159,7 @@ void rfm_init(void) {
   Serial.println(spi_command(RFM_STATUS) & 0x400, HEX);
 }
 
-void sendPayload(bool type, String endpoint, String uid, String dev, String unit, String name, String state) {
+void sendPayload(bool type, String endpoint, String uid, String dev, String unit, String name, String stats, String state) {
   // We can't use HTTPClient as it might clash with other WiFi libraries
   WiFiClient client;
  
@@ -187,6 +188,9 @@ void sendPayload(bool type, String endpoint, String uid, String dev, String unit
   payload["state"] = state;
   payload["attributes"]["device_class"] = dev;
   payload["attributes"]["friendly_name"] = name;
+  if (stats.length() > 0) {
+    payload["attributes"]["state_class"] = stats;
+  }
   if (unit.length() > 0) {
     payload["attributes"]["unit_of_measurement"] = unit;
   }
@@ -245,7 +249,7 @@ void processPacket(void) {
     // amps / current = value-bytes * exp-byte^2 * 32768
     float watts = (float)(pkt.amp_msb << 8 | pkt.amp_lsb) * (1 << pkt.amp_exp) / (1 << 15) * VOLTAGE;    
 
-    sendPayload(HA_0_TYPE, HA_0_ID, String(pkt.uid, HEX), HA_0_DEV, HA_0_UNIT, HA_0_NAME, String(watts));
+    sendPayload(HA_0_TYPE, HA_0_ID, String(pkt.uid, HEX), HA_0_DEV, HA_0_UNIT, HA_0_NAME, HA_0_STATS, String(watts));
     
     // Go to sleep until the next packet is expected
     digitalWrite(RFM01S_NSEL, HIGH);

@@ -38,6 +38,7 @@
 #define HA_0_DEV "temperature"
 #define HA_0_UNIT "\u00b0C"
 #define HA_0_NAME "Temperature"
+#define HA_0_STATS "measurement"
 
 #define HA_1_TYPE SENSOR
 #define HA_1_ID "climate"
@@ -45,6 +46,7 @@
 #define HA_1_DEV "humidity"
 #define HA_1_UNIT "%"
 #define HA_1_NAME "Humidity"
+#define HA_1_STATS "measurement"
 
 #define HA_2_TYPE BINARY
 #define HA_2_ID "climate"
@@ -52,6 +54,7 @@
 #define HA_2_DEV "battery"
 #define HA_2_UNIT ""
 #define HA_2_NAME "Battery Power"
+#define HA_2_STATS ""
 
 #define HA_3_TYPE SENSOR
 #define HA_3_ID "climate"
@@ -59,6 +62,7 @@
 #define HA_3_DEV "pressure"
 #define HA_3_UNIT "hPa"
 #define HA_3_NAME "Pressure"
+#define HA_3_STATS "measurement"
 
 // Thermometer - Varies +/-83kHz (B/W: 166MHz)
 #define BASEFREQ      433.73
@@ -203,7 +207,7 @@ void rfminit() {
   Serial.println("RFM69HCW: Configured");
 }
 
-void sendPayload(bool type, String endpoint, String uid, String dev, String unit, String name, String state) {
+void sendPayload(bool type, String endpoint, String uid, String dev, String unit, String name, String stats, String state) {
   // We can't use HTTPClient as it might clash with other WiFi libraries
   WiFiClient client;
 
@@ -232,6 +236,9 @@ void sendPayload(bool type, String endpoint, String uid, String dev, String unit
   payload["state"] = state;
   payload["attributes"]["device_class"] = dev;
   payload["attributes"]["friendly_name"] = name;
+  if (stats.length() > 0) {
+    payload["attributes"]["state_class"] = stats;
+  }
   if (unit.length() > 0) {
     payload["attributes"]["unit_of_measurement"] = unit;
   }
@@ -363,15 +370,15 @@ void processData() {
     uint8_t id = (thisdata >> 28) & 0xFF;
 
     // Push the data
-    sendPayload(HA_0_TYPE, HA_0_ID, String(id), HA_0_DEV, HA_0_UNIT, HA_0_NAME, String(temperature, 1));
-    sendPayload(HA_1_TYPE, HA_1_ID, String(id), HA_1_DEV, HA_1_UNIT, HA_1_NAME, String(humidity));
-    sendPayload(HA_2_TYPE, HA_2_ID, String(id), HA_2_DEV, HA_2_UNIT, HA_2_NAME, battery ? "off" : "on");
+    sendPayload(HA_0_TYPE, HA_0_ID, String(id), HA_0_DEV, HA_0_UNIT, HA_0_NAME, HA_0_STATS, String(temperature, 1));
+    sendPayload(HA_1_TYPE, HA_1_ID, String(id), HA_1_DEV, HA_1_UNIT, HA_1_NAME, HA_1_STATS, String(humidity));
+    sendPayload(HA_2_TYPE, HA_2_ID, String(id), HA_2_DEV, HA_2_UNIT, HA_2_NAME, HA_2_STATS, battery ? "off" : "on");
 
     if (dps.temperatureAvailable() && dps.pressureAvailable()) {
       sensors_event_t temp_event, pressure_event;
       dps.getEvents(&temp_event, &pressure_event);
-      sendPayload(HA_0_TYPE, HA_0_ID, String("0"), HA_0_DEV, HA_0_UNIT, HA_0_NAME, String(temp_event.temperature, 2));
-      sendPayload(HA_3_TYPE, HA_3_ID, String("0"), HA_3_DEV, HA_3_UNIT, HA_3_NAME, String(pressure_event.pressure, 2));
+      sendPayload(HA_0_TYPE, HA_0_ID, String("0"), HA_0_DEV, HA_0_UNIT, HA_0_NAME, HA_0_STATS, String(temp_event.temperature, 2));
+      sendPayload(HA_3_TYPE, HA_3_ID, String("0"), HA_3_DEV, HA_3_UNIT, HA_3_NAME, HA_3_STATS, String(pressure_event.pressure, 2));
       readings[0].active = 1;
       readings[0].id = id;
       readings[0].temperature = temp_event.temperature;

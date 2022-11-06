@@ -38,6 +38,7 @@
 #define HA_0_DEV "mode"
 #define HA_0_UNIT ""
 #define HA_0_NAME "Heating Mode"
+#define HA_0_STATS ""
 
 #define HA_1_TYPE SENSOR
 #define HA_1_ID "heating"
@@ -45,6 +46,7 @@
 #define HA_1_DEV "thermostat"
 #define HA_1_UNIT "\u00b0C"
 #define HA_1_NAME "Heating Thermostat"
+#define HA_1_STATS "measurement"
 
 // Base ID for the heating
 #define BASEID 0xFF
@@ -227,7 +229,7 @@ void rfminit() {
   Serial.println("RFM69HCW: Configured");
 }
 
-void sendPayload(bool type, String endpoint, String uid, String dev, String unit, String name, String state) {
+void sendPayload(bool type, String endpoint, String uid, String dev, String unit, String name, String stats, String state) {
   // We can't use HTTPClient as it might clash with other WiFi libraries
   WiFiClient client;
 
@@ -254,6 +256,9 @@ void sendPayload(bool type, String endpoint, String uid, String dev, String unit
   payload["state"] = state;
   payload["attributes"]["device_class"] = dev;
   payload["attributes"]["friendly_name"] = name;
+  if (stats.length() > 0) {
+    payload["attributes"]["state_class"] = stats;
+  }
   if (unit.length() > 0) {
     payload["attributes"]["unit_of_measurement"] = unit;
   }
@@ -305,7 +310,7 @@ void payloadProcess() {
         
       // RC Status (the ambient temperature)
       case 0x43:
-        sendPayload(HA_1_TYPE, HA_1_ID, String(BASEID, HEX), HA_1_DEV, HA_1_UNIT, HA_1_NAME, String((msg.msg[5] & 0x7F) * 0.5));
+        sendPayload(HA_1_TYPE, HA_1_ID, String(BASEID, HEX), HA_1_DEV, HA_1_UNIT, HA_1_NAME, HA_1_STATS, String((msg.msg[5] & 0x7F) * 0.5));
         break;
 
       // RX Status (the state of the boiler)
@@ -316,7 +321,7 @@ void payloadProcess() {
         } else {
           state = "Mode" + String(msg.msg[6]);
         }
-        sendPayload(HA_0_TYPE, HA_0_ID, String(BASEID, HEX), HA_0_DEV, HA_0_UNIT, HA_0_NAME, String(state));
+        sendPayload(HA_0_TYPE, HA_0_ID, String(BASEID, HEX), HA_0_DEV, HA_0_UNIT, HA_0_NAME, HA_0_STATS, String(state));
         break;
 
       default:
